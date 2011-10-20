@@ -4,9 +4,9 @@ using System.Collections.Generic;
 namespace Ants {
 	
 	public class GameState {
-		
-		public int Width { get; private set; }
-		public int Height { get; private set; }
+
+        public static int Width;
+        public static int Height;
 		
 		public int LoadTime { get; private set; }
 		public int TurnTime { get; private set; }
@@ -165,18 +165,13 @@ namespace Ants {
 
         public List<char> getPath(Location start, List<Location> targets)
         {
-            Debug.Write("Getting a path");
             ANode startNode = null;            
             List<ANode> nodeTargets = new List<ANode>();
-
-
+            
             foreach (ANode n in nodes)
             {
                 if (n.Coords.Equals(start))
-                {
                     startNode = n;
-                    Debug.Write("Start Node: " + n.Coords);
-                }
 
                 foreach(Location t in targets)
                 {

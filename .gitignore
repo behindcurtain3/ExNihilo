@@ -1,5 +1,5 @@
 /bin
-*/tools/*
+/tools
 */bin/*
 */obj/*
 *.exe

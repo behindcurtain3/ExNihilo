@@ -35,6 +35,7 @@ namespace Ants {
 					
 					if (line.Equals(READY)) {
 						parseSetup(input);
+                        bot.doSetup(state);
 						finishTurn();
 						input.Clear();
 					} else if (line.Equals(GO)) {
@@ -105,25 +106,37 @@ namespace Ants {
 				if (line.Length <= 0) continue;
 								
 				string[] tokens = line.Split();
-				
-				if (tokens.Length >=3) {
-					int row = int.Parse(tokens[1]);
-					int col = int.Parse(tokens[2]);
-					
-					if (tokens[0].Equals("a")) {
-						state.addAnt(row, col, int.Parse(tokens[3]));
-					} else if (tokens[0].Equals("h")) {
+
+                if (tokens.Length >= 3)
+                {
+                    int row = int.Parse(tokens[1]);
+                    int col = int.Parse(tokens[2]);
+
+                    if (tokens[0].Equals("a"))
+                    {
+                        state.addAnt(row, col, int.Parse(tokens[3]));
+                    }
+                    else if (tokens[0].Equals("f"))
+                    {
+                        state.addFood(row, col);
+                    }
+                    else if (tokens[0].Equals("r"))
+                    {
+                        state.removeFood(row, col);
+                    }
+                    else if (tokens[0].Equals("w"))
+                    {
+                        state.addWater(row, col);
+                    }
+                    else if (tokens[0].Equals("d"))
+                    {
+                        state.deadAnt(row, col);
+                    }
+                    else if (tokens[0] == "h")
+                    {
                         state.addHill(row, col, int.Parse(tokens[3]));
-                    } else if (tokens[0].Equals("f")) {
-						state.addFood(row, col);
-					} else if (tokens[0].Equals("r")) {
-						state.removeFood(row, col);
-					} else if (tokens[0].Equals("w")) {
-						state.addWater(row, col);
-					} else if (tokens[0].Equals("d")) {
-						state.deadAnt(row, col);
-					}
-				}
+                    }
+                }
 			}
 		}
 		

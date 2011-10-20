@@ -2,7 +2,8 @@ using System;
 
 namespace Ants {
 	public abstract class Bot {
-				
+
+        public abstract void doSetup(GameState state);
 		public abstract void doTurn(GameState state);
 		
 		protected void issueOrder(Location loc, char direction) {

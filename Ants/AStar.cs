@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Diagnostics;
 
 namespace Ants
 {
@@ -11,12 +12,7 @@ namespace Ants
 
         public static Path getPath(ANode start, List<ANode> targets)
         {
-            Debug.Write("Finding path from " + start.Coords);
-            Debug.Write("To:");
-            foreach (ANode n in targets)
-            {
-                Debug.Write("--- " + n.Coords);
-            }
+            Stopwatch sw = Stopwatch.StartNew();
             Path empty = new Path();
 
             List<ANode> openList = new List<ANode>();
@@ -45,7 +41,7 @@ namespace Ants
                     }
                 }
 
-                if (targets.Contains(currentNode))
+                if (targets.Contains(currentNode) || sw.ElapsedMilliseconds > 50)
                 {
                     // We found the target node
                     Path path = new Path();

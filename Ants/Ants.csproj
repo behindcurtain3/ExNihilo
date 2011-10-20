@@ -45,6 +45,7 @@
     <Compile Include="Location.cs" />
     <Compile Include="MyBot.cs" />
     <Compile Include="Path.cs" />
+    <Compile Include="Quad.cs" />
     <Compile Include="Tile.cs" />
   </ItemGroup>
   <ItemGroup>
