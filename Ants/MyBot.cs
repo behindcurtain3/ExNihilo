@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 
 namespace Ants {
-
+    
 	class MyBot : Bot {
         public static char NORTH = 'n';
         public static char EAST = 'e';
@@ -10,227 +10,250 @@ namespace Ants {
         public static char WEST = 'w';
 		private GameState mState;
 
+        private List<Ant> ants = new List<Ant>();
+        private List<Location> enemyBases = new List<Location>();
         private List<Location> previousPositions = new List<Location>();
         private List<Location> currentPositions = new List<Location>();
         private List<Location> currentMoves = new List<Location>();
 
 
         private double ViewRadius { get; set; }
-        List<Location> unseen = new List<Location>();
+        private MapSearch map;
 
         public override void doSetup(GameState state)
         {
             ViewRadius = Math.Sqrt(state.ViewRadius2);
-
-            for (int row = 0; row < GameState.Height; row++)
-            {
-                for (int col = 0; col < GameState.Width; col++)
-                {
-                    unseen.Add(new Location(row, col));
-                }
-            }
+            map = new MapSearch(GameState.Height, GameState.Width, (int)ViewRadius);
+            ants = new List<Ant>();
         }
 
 		// doTurn is run once per turn
 		public override void doTurn (GameState state) {
 			mState = state;
-
+            //Debug.Write("***** TURN " + state.CurrentTurn + " *****");
             previousPositions = new List<Location>(currentPositions);
             currentPositions.Clear();
             currentMoves.Clear();
 
-            // update our unseen tiles
-            List<LocAndDist> unseenDist = new List<LocAndDist>();
-            for(int i = unseen.Count - 1; i >= 0; i--)
+            // Update our map
+            map.update(state, state.MyAnts);
+
+            // Add any new ants to our list
+            foreach(AntLoc ant in state.MyAnts)
             {
-                foreach (AntLoc ant in state.MyAnts)
+                if (ants.Find(delegate(Ant a) { return a.Loc.Equals(ant); }) == null)
                 {
-                    int d = state.distance(ant, unseen[i]);
-                    if (d <= ViewRadius)
+                    Ant a = new Ant(ant);
+
+                    if (ants.Count < 10)
+                        a.Role = Ant.Roles.SCOUT;
+                    else
                     {
-                        unseen.Remove(unseen[i]);
-                        break;
-                    }
-                    unseenDist.Add(new LocAndDist(ant, unseen[i], d));
-
-                    if (mState.TimeRemaining < 200) break;
-                }
-
-                if (mState.TimeRemaining < 200) break;
-            }
-
-            // attempt to find food
-            List<LocAndDist> antDists = new List<LocAndDist>();
-            foreach (Location food in state.FoodTiles)
-            {
-                foreach (AntLoc ant in state.MyAnts)
-                {
-                    antDists.Add(new LocAndDist(ant, food, mState.distance(ant, food)));
-                }
-            }
-            foreach (HillLoc hill in state.EnemyHills)
-            {
-                foreach (AntLoc ant in state.MyAnts)
-                {
-                    antDists.Add(new LocAndDist(ant, hill, mState.distance(ant, hill), false));
-                }
-            }
-            
-            antDists.Sort(SortByDistanceAndHill);
-
-            List<Location> targets = new List<Location>();
-            foreach (LocAndDist pair in antDists)
-            {
-                if (targets.Contains(pair.Dest))
-                    continue;
-
-                List<Location> t = new List<Location>();
-                t.Add(pair.Dest);
-                List<char> dirs = mState.getPath(pair.Ant, t);
-                foreach (char dir in dirs)
-                {
-                    Location newLoc = mState.destination(pair.Ant, dir);
-                    if (moveTo(pair.Ant, newLoc, dir))
-                    {
-                        if(pair.Solo)
-                            targets.Add(pair.Dest);
-                        break;
-                    }
-                }
-
-                if (mState.TimeRemaining < 50) break;
-            }
-
-            if (mState.TimeRemaining < 50)
-                return;
-
-            Debug.Write("Nodes: " + unseenDist.Count);
-            unseenDist.RemoveAll(delegate(LocAndDist a) { return currentPositions.Contains(a.Ant); });
-            Debug.Write("After Pruning: " + unseenDist.Count);
-            if (unseenDist.Count > 0 && mState.TimeRemaining > 100)
-            {
-                Debug.Write("T0: " + mState.TimeRemaining);
-                unseenDist.Sort(SortByDistance);
-                Debug.Write("T1: " + mState.TimeRemaining);
-
-                foreach (LocAndDist pair in unseenDist)
-                {
-                    if (pair.Distance > (GameState.Width + GameState.Height) / 2)
-                    {
-
-                        foreach (char dir in mState.direction(pair.Ant, pair.Dest))
+                        switch (ants.Count % 3)
                         {
-                            Location newLoc = mState.destination(pair.Ant, dir);
-                            if (moveTo(pair.Ant, newLoc, dir))
+                            case 0:
+                                a.Role = Ant.Roles.SCOUT;
+                                break;
+                            case 1:
+                                a.Role = Ant.Roles.SCOUT;
+                                break;
+                            case 2:
+                                a.Role = Ant.Roles.SOLDIER;
+                                break;
+                            default:
+                                a.Role = Ant.Roles.SCOUT;
                                 break;
                         }
                     }
-                    else
+                    ants.Add(a);
+                    // move off the spawn
+                    foreach (char dir in Ants.Aim.Keys)
                     {
-                        List<Location> t = new List<Location>();
-                        t.Add(pair.Dest);
-                        List<char> dirs = mState.getPath(pair.Ant, t);
-                        foreach (char dir in dirs)
+                        Location newLoc = state.destination(a.Loc, dir);
+                        if (moveTo(a.Loc, newLoc, dir))
                         {
-                            Location newLoc = mState.destination(pair.Ant, dir);
-                            if (moveTo(pair.Ant, newLoc, dir))
+                            a.Loc = new AntLoc(newLoc.row, newLoc.col, a.Loc.team);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Remove dead ants
+            foreach (Location loc in state.DeadTiles)
+                ants.RemoveAll(delegate(Ant a) { return a.Loc.Equals(loc); });
+
+            foreach (Location hill in state.EnemyHills)
+            {
+                if (enemyBases.Find(delegate(Location h) { return h.Equals(hill); }) == null)
+                    enemyBases.Add(hill);
+            }
+
+            for(int i = enemyBases.Count - 1; i >= 0; i--)
+            {
+                foreach (Ant ant in ants)
+                {
+                    if (ant.Loc.Equals(enemyBases[i]))
+                    {
+                        enemyBases.RemoveAt(i);
+                        break;
+                    }
+                }
+            }
+
+            if (state.MyAnts.Count != ants.Count)
+            {
+                Debug.Write("TURN: " + state.CurrentTurn + " --- Numbers don't equal! " + ants.Count + " ants in my list when there is actually " + state.MyAnts.Count + " ants!");
+
+                for (int i = ants.Count - 1; i >= 0; i--)
+                {
+                    if (state.MyAnts.Find(delegate(AntLoc a) { return a.Equals(ants[i].Loc); }) == null)
+                        ants.RemoveAt(i);
+                }
+            }
+
+            // MOVE OFF THE SPAWN -- double check!
+            foreach (Location hill in state.MyHills)
+            {
+                foreach (Ant a in ants)
+                {
+                    if (hill.Equals(a.Loc))
+                    {
+                        foreach (char dir in Ants.Aim.Keys)
+                        {
+                            Location newLoc = state.destination(a.Loc, dir);
+                            if (moveTo(a.Loc, newLoc, dir))
                             {
-                                if (pair.Solo)
-                                    targets.Add(pair.Dest);
+                                a.Loc = new AntLoc(newLoc.row, newLoc.col, a.Loc.team);
                                 break;
                             }
                         }
                     }
-
-                    if (mState.TimeRemaining < 75) break;
                 }
             }
-			// loop through all my ants and try to give them orders
-			foreach (AntLoc ant in state.MyAnts) {
-                if (currentPositions.Contains(ant))
-                    continue;
 
+            int pathCalc = 0;
+            // Do moves for any ants that already have a target
+            foreach (Ant ant in ants)
+            {
+                if (ant.Path != null)
+                {
+                    if (ant.Path.Count > 0)
+                    {
+                        List<char> d = state.direction(ant.Loc, ant.Path.Peek().Coords);
+                        foreach (char dir in d)
+                        {
+                            Location newLoc = state.destination(ant.Loc, dir);
+                            if (moveTo(ant.Loc, newLoc, dir))
+                            {
+                                ant.Loc = new AntLoc(newLoc.row, newLoc.col, ant.Loc.team);
+                                if (ant.Path.Count > 1 && ant.Path.Peek().Coords.Equals(newLoc))
+                                    ant.Path.Pop();
+                                else
+                                    ant.Path = null;
+                            }
+                            else
+                            {
+                                // we had an invalid path
+                                ant.Path = null;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        /*
+                        // This allows us to move off the hill if we just spawned
+                        Location randLoc = state.destination(ant.Loc, EAST);
+                        if (moveTo(ant.Loc, randLoc, EAST))
+                        {
+                            ant.Loc = new AntLoc(randLoc.row, randLoc.col, ant.Loc.team);
+                            continue;
+                        }
+                        randLoc = state.destination(ant.Loc, SOUTH);
+                        if (moveTo(ant.Loc, randLoc, SOUTH))
+                        {
+                            ant.Loc = new AntLoc(randLoc.row, randLoc.col, ant.Loc.team);
+                            continue;
+                        }
+                        randLoc = state.destination(ant.Loc, WEST);
+                        if (moveTo(ant.Loc, randLoc, WEST))
+                        {
+                            ant.Loc = new AntLoc(randLoc.row, randLoc.col, ant.Loc.team);
+                            continue;
+                        }
+                        randLoc = state.destination(ant.Loc, NORTH);
+                        if (moveTo(ant.Loc, randLoc, NORTH))
+                        {
+                            ant.Loc = new AntLoc(randLoc.row, randLoc.col, ant.Loc.team);
+                            continue;
+                        }*/
+                    }
+                }                
+            }
+            foreach(Ant ant in ants)
+            {
+                if(ant.Path == null)
+                {
+                    List<Location> targets = new List<Location>();
+                    switch (ant.Role)
+                    {
+                        case Ant.Roles.WORKER:
+                            targets.AddRange(state.FoodTiles);
+                            break;
+                        case Ant.Roles.SCOUT:
+                            targets.AddRange(map.Points);
+                            break;
+                        case Ant.Roles.SOLDIER:
+                            targets.AddRange(enemyBases);
+                            break;
+                    }
+                    // if the ants default search space is empty try scouting
+                    if(targets.Count == 0)
+                        targets.AddRange(map.Points);
 
-                /*
-                // Explore!
-                Location dest;
-                if (unseen.Contains(ant.East))
-                {
-                    dest = state.destination(ant, EAST);
-                    if (moveTo(ant, dest, EAST))
-                        continue;
+                    if (targets.Count > 0)
+                    {
+                        ant.Path = mState.getPath(ant.Loc, targets);
+                        pathCalc++;
+                    }
                 }
-                else if (unseen.Contains(ant.South))
-                {
-                    dest = state.destination(ant, SOUTH);
-                    if (moveTo(ant, dest, SOUTH))
-                        continue;
-                }
-                else if (unseen.Contains(ant.West))
-                {
-                    dest = state.destination(ant, WEST);
-                    if (moveTo(ant, dest, WEST))
-                        continue;
-                }
-                else if (unseen.Contains(ant.North))
-                {
-                    dest = state.destination(ant, NORTH);
-                    if (moveTo(ant, dest, NORTH))
-                        continue;
-                }
-                */
-                // Go right then down then left then up
-                Location randLoc = state.destination(ant, EAST);
-                if (moveTo(ant, randLoc, EAST))
-                    continue;
-                randLoc = state.destination(ant, SOUTH);
-                if (moveTo(ant, randLoc, SOUTH))
-                    continue;
-                randLoc = state.destination(ant, WEST);
-                if (moveTo(ant, randLoc, WEST))
-                    continue;
-                randLoc = state.destination(ant, NORTH);
-                if (moveTo(ant, randLoc, NORTH))
-                    continue;
-				
-				// check if we have time left to calculate more orders
-				if (state.TimeRemaining < 25) break;
-			}
-			
-		}
+                
+                if (mState.TimeRemaining < 50) break;
+            }
 
-        public Boolean getCloseItems(AntLoc ant)
+            Debug.Write("Calc'd " + pathCalc + " paths.");
+        }
+
+        public Boolean getCloseItems(GameState state, Ant ant)
         {
-            List<Location> inRange = new List<Location>();
-
-            foreach(Location food in mState.FoodTiles)
+            Boolean moved = false;
+            if (ant.Role == Ant.Roles.SCOUT)
             {
-                if (mState.distance(ant, food) <= ViewRadius)
+                // Look for food right around us
+                foreach (Location food in state.FoodTiles)
                 {
-                    inRange.Add(food);
+                    if (moved)
+                        break;
+
+                    int dist = state.distance(ant.Loc, food);
+                    if (dist <= 3)
+                    {
+                        List<char> dirs = state.direction(ant.Loc, food);
+                        foreach (char dir in dirs)
+                        {
+                            Location newLoc = state.destination(ant.Loc, dir);
+                            if (moveTo(ant.Loc, newLoc, dir))
+                            {
+                                ant.Loc = new AntLoc(newLoc.row, newLoc.col, ant.Loc.team);
+                                moved = true;
+                                break;
+                            }
+                        }
+
+                    }
                 }
             }
-
-            foreach (HillLoc hill in mState.EnemyHills)
-            {
-                if (mState.distance(ant, hill) <= ViewRadius)
-                {
-                    inRange.Add(hill);
-                }
-            }
-
-            if (inRange.Count == 0)
-                return false;
-
-            List<char> dirs = mState.getPath(ant, inRange);
-            foreach (char dir in dirs)
-            {
-                Location newLoc = mState.destination(ant, dir);
-                if (moveTo(ant, newLoc, dir))
-                    return true;
-            }
-
-            return false;
+            return moved;
         }
 
         public Boolean moveTo(AntLoc ant, Location dest, char dir)
@@ -238,6 +261,7 @@ namespace Ants {
             if (mState.unoccupied(dest) && !previousPositions.Contains(dest) && !currentMoves.Contains(dest))
             {
                 issueOrder(ant, dir);
+
                 currentPositions.Add(ant);
                 currentMoves.Add(dest);
                 return true;

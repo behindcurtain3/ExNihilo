@@ -104,7 +104,7 @@ namespace Ants {
 			
 			foreach (string line in input) {
 				if (line.Length <= 0) continue;
-								
+
 				string[] tokens = line.Split();
 
                 if (tokens.Length >= 3)
@@ -136,6 +136,10 @@ namespace Ants {
                     {
                         state.addHill(row, col, int.Parse(tokens[3]));
                     }
+                }
+                else if (tokens[0] == "turn")
+                {
+                    state.CurrentTurn = int.Parse(tokens[1]);
                 }
 			}
 		}

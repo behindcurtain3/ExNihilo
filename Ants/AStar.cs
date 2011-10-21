@@ -26,6 +26,9 @@ namespace Ants
 
             while (!foundTarget)
             {
+                if (sw.ElapsedMilliseconds > 50)
+                    return empty;
+
                 // If the openlist has no ANodes return an empty path
                 if (openList.Count == 0)
                     return empty;
@@ -41,7 +44,7 @@ namespace Ants
                     }
                 }
 
-                if (targets.Contains(currentNode) || sw.ElapsedMilliseconds > 50)
+                if (targets.Contains(currentNode))
                 {
                     // We found the target node
                     Path path = new Path();

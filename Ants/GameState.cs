@@ -7,7 +7,8 @@ namespace Ants {
 
         public static int Width;
         public static int Height;
-		
+
+        public int CurrentTurn { get; set; }
 		public int LoadTime { get; private set; }
 		public int TurnTime { get; private set; }
 		
@@ -25,8 +26,8 @@ namespace Ants {
 		
 		public List<AntLoc> MyAnts;
 		public List<AntLoc> EnemyAnts;
-        public List<HillLoc> MyHills;
-        public List<HillLoc> EnemyHills;
+        public List<Location> MyHills;
+        public List<Location> EnemyHills;
 		public List<Location> DeadTiles;
 		public List<Location> FoodTiles;
 		
@@ -51,8 +52,8 @@ namespace Ants {
 			
 			MyAnts = new List<AntLoc>();
 			EnemyAnts = new List<AntLoc>();
-            MyHills = new List<HillLoc>();
-            EnemyHills = new List<HillLoc>();
+            MyHills = new List<Location>();
+            EnemyHills = new List<Location>();
             DeadTiles = new List<Location>();
 			FoodTiles = new List<Location>();
 			
@@ -126,9 +127,12 @@ namespace Ants {
 
         public void addHill(int row, int col, int team)
         {
-            HillLoc hill = new HillLoc(row, col, team);
+            Location hill = new Location(row, col);
             if (team == 0)
+            {
                 MyHills.Add(hill);
+                nodes[row, col].Passable = false;
+            }
             else
                 EnemyHills.Add(hill);
         }
@@ -163,7 +167,27 @@ namespace Ants {
 			DeadTiles.Add(new Location(row, col));
 		}
 
-        public List<char> getPath(Location start, List<Location> targets)
+        public Path getSinglePath(Location start, Location target)
+        {
+            ANode startNode = null;
+            List<ANode> nodeTargets = new List<ANode>();
+
+            foreach (ANode n in nodes)
+            {
+                if (n.Coords.Equals(start))
+                    startNode = n;
+
+                if (n.Coords.Equals(target))
+                    nodeTargets.Add(n);
+            }
+
+            if (startNode == null)
+                return new Path();
+
+            return AStar.getPath(startNode, nodeTargets);
+        }
+
+        public List<char> getListPath(Location start, List<Location> targets)
         {
             ANode startNode = null;            
             List<ANode> nodeTargets = new List<ANode>();
@@ -182,17 +206,40 @@ namespace Ants {
                 }
             }
 
-            if(startNode == null)
+            if (startNode == null)
                 return new List<char>();
 
             Path p = AStar.getPath(startNode, nodeTargets);
-
             if (p.Count > 0)
                 return direction(start, p.Peek().Coords);
             else
-                return new List<char>();
+                return new List<char>();            
         }
 
+        public Path getPath(Location start, List<Location> targets)
+        {
+            ANode startNode = null;
+            List<ANode> nodeTargets = new List<ANode>();
+
+            foreach (ANode n in nodes)
+            {
+                if (n.Coords.Equals(start))
+                    startNode = n;
+
+                foreach (Location t in targets)
+                {
+                    if (n.Coords.Equals(t))
+                    {
+                        nodeTargets.Add(n);
+                    }
+                }
+            }
+
+            if (startNode == null)
+                return new Path();
+
+            return AStar.getPath(startNode, nodeTargets);
+        }
 		
 		public bool passable (Location loc) {
 			// true if not water

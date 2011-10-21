@@ -59,7 +59,7 @@ namespace Ants {
 
         public override string ToString()
         {
-            return col.ToString() + "," + row.ToString();
+            return col.ToString("000") + "," + row.ToString("000");
         }
 
         public override bool Equals(object obj)
@@ -81,7 +81,7 @@ namespace Ants {
 			this.team = team;
 		}
 	}
-
+    /*
     public class HillLoc : Location
     {
         public int team { get; private set; }
@@ -92,7 +92,7 @@ namespace Ants {
             this.team = team;
         }
     }
-
+    */
     public class LocAndDist
     {
         public AntLoc Ant { get; set; }
