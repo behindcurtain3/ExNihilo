@@ -13,14 +13,13 @@ namespace Ants
         public double Range { get; set; }
 
         public List<Location> Points { get; set; }
-        public double[,,] Distances { get; set; } // table of distances from one loc to another
 
         public MapSearch(int h, int w, int s)
         {
             Height = h;
             Width = w;
-            Sight = s;
-            Range = Sight;
+            Sight = s * 2;
+            Range = s;
 
             int start = (int)(s * 0.5);
 
@@ -38,50 +37,7 @@ namespace Ants
                 Debug.Write(line);
             }
 
-
-
-            Distances = new double[Height, Width, Height * Width];
-
-            for (int a = 0; a < Height; a++)
-            {
-                for (int b = 0; b < Width; b++)
-                {
-                    for (int c = 0; c < Height * Width; c++)
-                    {
-                        Distances[a, b, c] = 0;
-                    }
-                }
-            }
-        }
-
-        public Location nearest(GameState state, AntLoc ant)
-        {
-            if (Points.Count == 0)
-                return ant;
-
-            Dictionary<Location, double> antDist = new Dictionary<Location, double>();
-            foreach (Location p in Points)
-            {
-                int index = ant.row * Width + ant.col;
-                if (Distances[p.row, p.col, index] == 0)
-                {
-                    Distances[p.row, p.col, index] = state.distance(p, ant);
-                }
-                if(!antDist.ContainsKey(p))
-                    antDist.Add(p, Distances[p.row, p.col, index]);
-            }
-
-            antDist = antDist.OrderBy(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
-
-            foreach (Location loc in antDist.Keys)
-                return loc;
-
-            return ant;
-        }
-
-        public void addAnchor(Location loc)
-        {
-
+            Debug.Write("Map setup.");
         }
 
         public void update(GameState state, List<AntLoc> ants)
@@ -90,9 +46,12 @@ namespace Ants
             {
                 foreach (AntLoc ant in ants)
                 {
-                    if (state.distance(ant, Points[i]) < Range)
+                    if (state.TimeRemaining < 50)
+                        return;
+
+                    if (state.distance(ant, Points[i]) <= Range)
                     {
-                        Debug.Write("Removed point: " + Points[i]);
+                        Debug.Write("   - Removed point: " + Points[i]);
                         Points.RemoveAt(i);
                         break;
                     }

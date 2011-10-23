@@ -9,43 +9,25 @@ namespace Ants
         // Used in A*
         public ANode Parent
         {
-            get
-            {
-                return mParent;
-            }
-            set
-            {
-                mParent = value;
-            }
+            get;
+            set;
         }
-        private ANode mParent;
-
         // Coord on map, not pixels
-        public Location Coords
+        public Location Location
         {
-            get
-            {
-                return mCoords;
-            }
+            get;
+            private set;
         }
-        private Location mCoords;
 
         public float F;
         public float G;
         public float H;
 
-        public Dictionary<ANode, Boolean> Neighbors
+        public List<ANode> Neighbors
         {
-            get
-            {
-                return mNeighbors;
-            }
-            set
-            {
-                mNeighbors = value;
-            }
+            get;
+            private set;
         }
-        private Dictionary<ANode, Boolean> mNeighbors = new Dictionary<ANode, Boolean>();
 
         // Is this node passable?
         public Boolean Passable
@@ -56,8 +38,9 @@ namespace Ants
 
         public ANode(Location l)
         {
-            mCoords = l;
+            Location = l;
             Passable = true;
+            Neighbors = new List<ANode>();
         }
 
     }

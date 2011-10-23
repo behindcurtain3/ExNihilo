@@ -40,9 +40,9 @@
     <Compile Include="AStar.cs" />
     <Compile Include="Bot.cs" />
     <Compile Include="Debug.cs" />
-    <Compile Include="ExNihiloBot.cs" />
     <Compile Include="GameState.cs" />
     <Compile Include="Location.cs" />
+    <Compile Include="Mapper.cs" />
     <Compile Include="MapSearch.cs" />
     <Compile Include="MyBot.cs" />
     <Compile Include="Path.cs" />
@@ -51,6 +51,7 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Drawing" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

@@ -32,7 +32,8 @@ namespace Ants {
 		public List<Location> FoodTiles;
 		
 		private Tile[,] map;
-        private ANode[,] nodes;
+        public List<Location> Unseen;
+        public ANode[,] nodes;
 		
 		public GameState (int width, int height, 
 		                  int turntime, int loadtime, 
@@ -56,13 +57,15 @@ namespace Ants {
             EnemyHills = new List<Location>();
             DeadTiles = new List<Location>();
 			FoodTiles = new List<Location>();
+            Unseen = new List<Location>();
 			
 			map = new Tile[height, width];
             nodes = new ANode[height, width];
 			for (int row = 0; row < height; row++) {
 				for (int col = 0; col < width; col++) {
 					map[row, col] = Tile.Land;
-                    nodes[row, col] = new ANode(new Location(row, col));                     
+                    nodes[row, col] = new ANode(new Location(row, col));
+                    Unseen.Add(new Location(row, col));
 				}
 			}
             for (int row = 0; row < height; row++)
@@ -88,8 +91,8 @@ namespace Ants {
             if (c >= Width)
                 c = 0;
 
-            if (!node.Neighbors.ContainsKey(nodes[r, c]))
-                node.Neighbors.Add(nodes[r, c], true);
+            if (!node.Neighbors.Contains(nodes[r, c]))
+                node.Neighbors.Add(nodes[r, c]);
         }
 		
 		public void startNewTurn () {
@@ -128,10 +131,11 @@ namespace Ants {
         public void addHill(int row, int col, int team)
         {
             Location hill = new Location(row, col);
+            Unseen.Remove(hill as Location);
             if (team == 0)
             {
                 MyHills.Add(hill);
-                nodes[row, col].Passable = false;
+                //nodes[row, col].Passable = false;
             }
             else
                 EnemyHills.Add(hill);
@@ -139,7 +143,9 @@ namespace Ants {
 		
 		public void addFood (int row, int col) {
 			map[row, col] = Tile.Food;
-			FoodTiles.Add(new Location(row, col));
+            Location l = new Location(row, col);
+			FoodTiles.Add(l);
+            Unseen.Remove(l);
 		}
 		
 		public void removeFood (int row, int col) {
@@ -154,6 +160,7 @@ namespace Ants {
 		public void addWater (int row, int col) {
 			map[row, col] = Tile.Water;
             nodes[row, col].Passable = false;
+            Unseen.Remove(new Location(row, col));
 		}
 		
 		public void deadAnt (int row, int col) {
@@ -174,10 +181,10 @@ namespace Ants {
 
             foreach (ANode n in nodes)
             {
-                if (n.Coords.Equals(start))
+                if (n.Location.Equals(start))
                     startNode = n;
 
-                if (n.Coords.Equals(target))
+                if (n.Location.Equals(target))
                     nodeTargets.Add(n);
             }
 
@@ -194,12 +201,12 @@ namespace Ants {
             
             foreach (ANode n in nodes)
             {
-                if (n.Coords.Equals(start))
+                if (n.Location.Equals(start))
                     startNode = n;
 
                 foreach(Location t in targets)
                 {
-                    if(n.Coords.Equals(t))
+                    if(n.Location.Equals(t))
                     {
                         nodeTargets.Add(n);
                     }
@@ -211,7 +218,7 @@ namespace Ants {
 
             Path p = AStar.getPath(startNode, nodeTargets);
             if (p.Count > 0)
-                return direction(start, p.Peek().Coords);
+                return direction(start, p.Peek().Location);
             else
                 return new List<char>();            
         }
@@ -223,12 +230,12 @@ namespace Ants {
 
             foreach (ANode n in nodes)
             {
-                if (n.Coords.Equals(start))
+                if (n.Location.Equals(start))
                     startNode = n;
 
                 foreach (Location t in targets)
                 {
-                    if (n.Coords.Equals(t))
+                    if (n.Location.Equals(t))
                     {
                         nodeTargets.Add(n);
                     }

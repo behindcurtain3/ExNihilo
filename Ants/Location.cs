@@ -52,9 +52,22 @@ namespace Ants {
 		public int row { get; private set; }
 		public int col { get; private set; }
 		
-		public Location (int row, int col) {
+		public Location (int row, int col, Boolean check = false) {
 			this.row = row;
 			this.col = col;
+
+            if (check)
+            {
+                if (this.row < 0)
+                    this.row = GameState.Height + this.row;
+                if (this.row >= GameState.Height)
+                    this.row -= GameState.Height;
+
+                if (this.col < 0)
+                    this.col = GameState.Width + this.col;
+                if (this.col >= GameState.Width)
+                    this.col -= GameState.Width;
+            }
 		}
 
         public override string ToString()

@@ -45,12 +45,14 @@ namespace Ants {
 						finishTurn();
 						input.Clear();
 					} else if (line.Equals(END)) {
+                        bot.doEnd(state);
 						break;	
 					} else {
 						input.Add(line);
 					}
 				}
 			} catch (Exception e) {
+                Debug.Write(e.Message);
 				#if DEBUG
 					FileStream fs = new FileStream("debug.log", System.IO.FileMode.Create, System.IO.FileAccess.Write);
 					StreamWriter sw = new StreamWriter(fs);

@@ -11,6 +11,7 @@ namespace Ants
 
         public static void Write(String text)
         {
+            Console.Error.WriteLine(text);
             /*
             if (!blanked)
             {

@@ -27,7 +27,17 @@ namespace Ants
             while (!foundTarget)
             {
                 if (sw.ElapsedMilliseconds > 50)
-                    return empty;
+                {
+                    // We found the target node
+                    Path path = new Path();
+                    ANode pathNode = currentNode;
+                    while (pathNode.Parent != null)
+                    {
+                        path.Push(pathNode);
+                        pathNode = (ANode)pathNode.Parent;
+                    }
+                    return path;
+                }
 
                 // If the openlist has no ANodes return an empty path
                 if (openList.Count == 0)
@@ -62,17 +72,17 @@ namespace Ants
                 openList.Remove(currentNode);
                 closedList.Add(currentNode);
 
-                foreach (KeyValuePair<ANode, Boolean> neighbor in currentNode.Neighbors)
+                foreach (ANode neighbor in currentNode.Neighbors)
                 {
-                    if (neighbor.Value && neighbor.Key.Passable)
+                    if (neighbor.Passable)
                     {
-                        if (!closedList.Contains(neighbor.Key) && !openList.Contains(neighbor.Key))
+                        if (!closedList.Contains(neighbor) && !openList.Contains(neighbor))
                         {
-                            neighbor.Key.Parent = currentNode;
-                            neighbor.Key.G = neighbor.Key.Parent.G + getDistance(currentNode, neighbor.Key);
-                            neighbor.Key.H = getClosestTarget(targets, neighbor.Key.Coords);
-                            neighbor.Key.F = neighbor.Key.G + neighbor.Key.H;
-                            openList.Add(neighbor.Key);
+                            neighbor.Parent = currentNode;
+                            neighbor.G = neighbor.Parent.G + getDistance(currentNode, neighbor);
+                            neighbor.H = getClosestTarget(targets, neighbor);
+                            neighbor.F = neighbor.G + neighbor.H;
+                            openList.Add(neighbor);
                         }
                     }
                 }
@@ -81,27 +91,27 @@ namespace Ants
             return empty;
         }
 
-        public static float getDistance(ANode a, ANode b)
+        public static int getDistance(ANode a, ANode b)
         {
             // calculate the closest distance between two locations
-            int d_row = Math.Abs(a.Coords.row - b.Coords.row);
+            int d_row = Math.Abs(a.Location.row - b.Location.row);
             d_row = Math.Min(d_row, Height - d_row);
 
-            int d_col = Math.Abs(a.Coords.col - a.Coords.col);
+            int d_col = Math.Abs(a.Location.col - a.Location.col);
             d_col = Math.Min(d_col, Width - d_col);
 
             return d_row + d_col;
 
-            //return Math.Abs(a.Coords.row - b.Coords.row) + Math.Abs(a.Coords.col - b.Coords.col);
+            //return Math.Abs(a.Location.row - b.Location.row) + Math.Abs(a.Location.col - b.Location.col);
         }
 
-        public static float getClosestTarget(List<ANode> targets, Location position)
+        public static int getClosestTarget(List<ANode> targets, ANode position)
         {
-            float smallestDistance = 9999f;
+            int smallestDistance = 9999;
 
             foreach (ANode c in targets)
             {
-                float d = Math.Abs(c.Coords.row - position.row) + Math.Abs(c.Coords.col - position.col);
+                int d = getDistance(c, position);
                 if (d < smallestDistance)
                 {
                     smallestDistance = d;
