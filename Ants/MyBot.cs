@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Drawing;
+//using System.Drawing;
+//using System.IO;
 
 namespace Ants
 {
@@ -14,7 +15,7 @@ namespace Ants
         public static char WEST = 'w';
         private GameState mState;
 
-        private MapSearch map;
+        private Mapper map;
         private List<Location> previousPositions = new List<Location>();    // Used to not move back the way you came if possible
         private List<Location> orders = new List<Location>();               // Squares we have an ant on that has already moved
         private List<Location> targets = new List<Location>();              // Squares we are targeting
@@ -37,14 +38,17 @@ namespace Ants
             ViewRadius = Math.Sqrt(state.ViewRadius2);
             Range = (int)Math.Floor(ViewRadius);
             Debug.Write("--- View Radius: " + ViewRadius);
-            map = new MapSearch(GameState.Height, GameState.Width, Range);
+            map = new Mapper(GameState.Height, GameState.Width, Range);
         }
 
         public override void doEnd(GameState state)
-        {            
+        {
+            /*
+            File.Delete("F:\\Programming\\Projects\\C#\\ExNihilo\\tools\\map.png");
             Bitmap img = new Bitmap(GameState.Width * 4, GameState.Height * 4);
             Brush on = Brushes.DarkGreen;
             Brush off = Brushes.Blue;
+            Brush unseen = Brushes.Black;
 
             using (var g = Graphics.FromImage(img))
             {
@@ -61,6 +65,7 @@ namespace Ants
                 }
             }
             img.Save("F:\\Programming\\Projects\\C#\\ExNihilo\\tools\\map.png");
+             */
         }
 
         // doTurn is run once per turn
@@ -73,10 +78,24 @@ namespace Ants
             orders.Clear();
             targets.Clear();
             currentMoves.Clear();
-            
+
+            int time = mState.TimeRemaining;
+
             getCloseItems();
-            if(mState.TimeRemaining > 200) getUnexploredAreas();
-            if(mState.TimeRemaining > 50) getOffMyHills();
+            Debug.Write(" * Got items in " + (time - mState.TimeRemaining) + "ms");
+
+            if (mState.TimeRemaining > 200)
+            {
+                time = mState.TimeRemaining;
+                getUnexploredAreas();
+                Debug.Write(" * Explored in " + (time - mState.TimeRemaining) + "ms");
+            }
+            if (mState.TimeRemaining > 50)
+            {
+                time = mState.TimeRemaining;
+                getOffMyHills();
+                Debug.Write(" * Off hills in " + (time - mState.TimeRemaining) + "ms");
+            }
 
             if (travelingTo.Count > 0)
                 Debug.Write(travelingTo.Count + " paths cached.");
@@ -106,14 +125,16 @@ namespace Ants
 
         public void getCloseItems()
         {
-            Debug.Write(" * Getting items");
             // attempt to find food
             List<LocAndDist> antDists = new List<LocAndDist>();
+            int distance;
             foreach (Location food in mState.FoodTiles)
             {
                 foreach (AntLoc ant in mState.MyAnts)
                 {
-                    antDists.Add(new LocAndDist(ant, food, mState.distance(ant, food)));
+                    distance = mState.distance(ant, food);
+                    if(distance <= ViewRadius + 4)
+                        antDists.Add(new LocAndDist(ant, food, mState.distance(ant, food)));
                 }
             }
             // and hills
@@ -132,8 +153,9 @@ namespace Ants
                         knownEnemyHills.RemoveAt(i);
                         break;
                     }
-
-                    antDists.Add(new LocAndDist(ant, knownEnemyHills[i], mState.distance(ant, knownEnemyHills[i]), false));
+                    distance = mState.distance(ant, knownEnemyHills[i]);
+                    if(distance <= ViewRadius * 2)
+                        antDists.Add(new LocAndDist(ant, knownEnemyHills[i], distance, false));
                 }
             }
 
@@ -169,65 +191,76 @@ namespace Ants
 
         public void getUnexploredAreas()
         {
-            Debug.Write(" * Exploring");
-
             if (mState.Unseen.Count == 0)
                 return;
 
             // Update our map
-            map.update(mState, mState.MyAnts);
+            map.update(mState);
 
             // Remove finished paths
             travelingTo.RemoveAll(delegate(Path p) { return p.Count == 0; });
             int paths = 0;
+            int cached = 0;
             foreach (AntLoc ant in mState.MyAnts)
             {
-                if (orders.Contains(ant as Location))
-                    continue;
-
                 if (mState.TimeRemaining < 100)
                     return;
 
-                // Try to use a path we've already calculated
-                for(int i = travelingTo.Count - 1; i >= 0; i--)
+                Path cachedPath = travelingTo.Find(delegate(Path p) { return p.Peek().Location.Equals(ant); });
+                if (cachedPath != null)
                 {
-                    if (travelingTo[i].Peek().Location.Equals(ant))
+                    if (!orders.Contains(ant))
                     {
                         // Yay!
-                        travelingTo[i].Pop();
+                        cached++;
+                        cachedPath.Pop();
 
-                        if (travelingTo[i].Count == 0)
+                        if (cachedPath.Count == 0)
                         {
-                            travelingTo.RemoveAt(i);
-                            break;
+                            travelingTo.Remove(cachedPath);
                         }
-
-                        Location destination = travelingTo[i].Peek().Location;
-                        foreach (char dir in mState.direction(ant, destination))
+                        else
                         {
-                            if (moveTo(ant, destination, dir))
-                                break;
+                            Location destination = cachedPath.Peek().Location;
+                            foreach (char dir in mState.direction(ant, destination))
+                            {
+                                if (moveTo(ant, destination, dir))
+                                    break;
+                            }
                         }
+                    }
+                    else
+                    {
+                        travelingTo.Remove(cachedPath);
                     }
                 }
 
                 // Check if we've moved, again
-                if (orders.Contains(ant as Location))
+                if (orders.Contains(ant))
                     continue;
 
-                Path p = mState.getPath(ant, map.Points);
-                Location dest;
-                if (p.Count == 0)
+                Location dest = map.nearest(mState, ant);
+                if (dest == null)
+                {
                     continue;
+                }
+
+                Path newPath = mState.getSinglePath(ant, dest);
+                if (newPath.Count == 0)
+                {
+                    continue;
+                }
 
                 paths++;
-                dest = p.Peek().Location;
+                dest = newPath.Peek().Location;
                 foreach (char dir in mState.direction(ant, dest))
                 {
                     if (moveTo(ant, dest, dir))
+                    {
+                        travelingTo.Add(newPath);
                         break;
+                    }
                 }
-
 
                 /*
                 List<Location> searchFor = new List<Location>(mState.Unseen);
@@ -301,7 +334,9 @@ namespace Ants
                 } */
                  
             }
+            Debug.Write("   - " + cached + " cached paths used.");
             Debug.Write("   - " + paths + " paths generated.");
+
         }
 
         public void getOffMyHills()
